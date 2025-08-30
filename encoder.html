@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Medical Encoder Tool</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background-color: #f4f7f9;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .encoder-container {
+            max-width: 800px;
+            width: 100%;
+            padding: 30px;
+            background-color: #fff;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 25px;
+            text-align: center;
+            font-size: 2.2em;
+        }
+        .search-box {
+            display: flex;
+            width: 100%;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        #searchInput {
+            flex-grow: 1;
+            padding: 12px 18px;
+            border: 1px solid #ccc;
+            border-radius: 25px;
+            font-size: 1em;
+            outline: none;
+            transition: border-color 0.3s, box-shadow 0.3s;
+        }
+        #searchInput:focus {
+            border-color: #3498db;
+            box-shadow: 0 0 5px rgba(52, 152, 219, 0.5);
+        }
+        #searchButton {
+            background-color: #2c3e50;
+            color: #fff;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: background-color 0.3s, transform 0.2s;
+        }
+        #searchButton:hover {
+            background-color: #34495e;
+            transform: translateY(-2px);
+        }
+        #results {
+            width: 100%;
+            padding-top: 15px;
+            border-top: 2px solid #e0e0e0;
+        }
+        .result-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            margin-bottom: 10px;
+            background-color: #f9f9f9;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            transition: background-color 0.3s;
+        }
+        .result-item:hover {
+            background-color: #f0f0f0;
+        }
+        .result-term {
+            font-weight: bold;
+            color: #555;
+        }
+        .result-code {
+            font-family: 'Courier New', Courier, monospace;
+            background-color: #eee;
+            padding: 5px 10px;
+            border-radius: 5px;
+            color: #2c3e50;
+        }
+        .no-results {
+            text-align: center;
+            color: #7f8c8d;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+
+<div class="encoder-container">
+    <h1>Medical Code Encoder</h1>
+    <div class="search-box">
+        <input type="text" id="searchInput" placeholder="Enter a diagnosis or procedure...">
+        <button id="searchButton">Search</button>
+    </div>
+    <div id="results">
+        <!-- Results will be displayed here -->
+    </div>
+</div>
+
+<script>
+    // Database of medical terms and their corresponding codes
+    // You can add as many as you like to study!
+    const medicalCodes = [
+        { term: "appendicitis", code: "K37" },
+        { term: "fracture of ankle", code: "S82.84" },
+        { term: "migraine with aura", code: "G43.109" },
+        { term: "bacterial pneumonia", code: "J15.9" },
+        { term: "type 2 diabetes mellitus", code: "E11.9" },
+        { term: "sore throat", code: "J02.9" },
+        { term: "chest pain", code: "R07.9" },
+        { term: "influenza with pneumonia", code: "J10.0" },
+        { term: "acute sinusitis", code: "J01.90" },
+        { term: "urinary tract infection", code: "N39.0" },
+        { term: "complete blood count", code: "85025" },
+        { term: "x-ray of chest", code: "71045" },
+        { term: "colonoscopy, diagnostic", code: "45378" },
+        { term: "office visit, new patient, low complexity", code: "99202" },
+        { term: "office visit, established patient, moderate complexity", code: "99214" }
+    ];
+
+    const searchInput = document.getElementById('searchInput');
+    const searchButton = document.getElementById('searchButton');
+    const resultsContainer = document.getElementById('results');
+
+    // Function to perform the search
+    function performSearch() {
+        const query = searchInput.value.toLowerCase().trim();
+        resultsContainer.innerHTML = ''; // Clear previous results
+
+        if (query === "") {
+            return;
+        }
+
+        const filteredCodes = medicalCodes.filter(item => {
+            return item.term.toLowerCase().includes(query);
+        });
+
+        if (filteredCodes.length > 0) {
+            filteredCodes.forEach(item => {
+                const resultItem = document.createElement('div');
+                resultItem.classList.add('result-item');
+                resultItem.innerHTML = `
+                    <span class="result-term">${item.term}</span>
+                    <span class="result-code">${item.code}</span>
+                `;
+                resultsContainer.appendChild(resultItem);
+            });
+        } else {
+            resultsContainer.innerHTML = `<p class="no-results">No codes found for "${query}". Try a different term.</p>`;
+        }
+    }
+
+    // Event listeners
+    searchButton.addEventListener('click', performSearch);
+    searchInput.addEventListener('keypress', (event) => {
+        if (event.key === 'Enter') {
+            performSearch();
+        }
+    });
+</script>
+
+</body>
+</html>
