@@ -66,12 +66,40 @@
             background-color: #34495e;
             transform: translateY(-2px);
         }
-        #results {
+        .filter-options {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 20px;
+            margin-bottom: 20px;
+            font-size: 0.9em;
+            color: #555;
+        }
+        .filter-options label {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+        }
+        #results, #favorites {
             width: 100%;
             padding-top: 15px;
             border-top: 2px solid #e0e0e0;
+            min-height: 50px;
+            display: flex;
+            flex-direction: column;
         }
-        .result-item {
+        .favorites-container {
+            margin-top: 30px;
+            width: 100%;
+            text-align: center;
+        }
+        .favorites-container h2 {
+            margin-bottom: 15px;
+            color: #2c3e50;
+            font-size: 1.5em;
+        }
+        .result-item, .favorite-item {
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -82,24 +110,55 @@
             border-radius: 8px;
             transition: background-color 0.3s;
         }
-        .result-item:hover {
+        .result-item:hover, .favorite-item:hover {
             background-color: #f0f0f0;
         }
-        .result-term {
+        .result-term, .favorite-term {
             font-weight: bold;
             color: #555;
+            flex: 1;
         }
-        .result-code {
+        .result-code, .favorite-code {
             font-family: 'Courier New', Courier, monospace;
             background-color: #eee;
             padding: 5px 10px;
             border-radius: 5px;
             color: #2c3e50;
+            margin-right: 10px;
         }
-        .no-results {
+        .save-button, .delete-button {
+            border: none;
+            background: none;
+            cursor: pointer;
+            font-size: 1.2em;
+            color: #3498db;
+            transition: color 0.2s;
+        }
+        .save-button:hover {
+            color: #2980b9;
+        }
+        .delete-button {
+            color: #e74c3c;
+        }
+        .delete-button:hover {
+            color: #c0392b;
+        }
+        .no-results, .no-favorites {
             text-align: center;
             color: #7f8c8d;
             font-style: italic;
+        }
+        .loading {
+            text-align: center;
+            color: #3498db;
+            font-weight: bold;
+            font-style: italic;
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
         }
     </style>
 </head>
@@ -111,91 +170,261 @@
         <input type="text" id="searchInput" placeholder="Enter a diagnosis or procedure...">
         <button id="searchButton">Search</button>
     </div>
+    <div class="filter-options">
+        <label>
+            <input type="radio" name="codeType" value="all" checked> All Codes
+        </label>
+        <label>
+            <input type="radio" name="codeType" value="icd10"> ICD-10 (Diagnoses)
+        </label>
+        <label>
+            <input type="radio" name="codeType" value="cpt"> CPT (Procedures)
+        </label>
+        <label>
+            <input type="radio" name="codeType" value="hcpcs2"> HCPCS Level II (Supplies)
+        </label>
+    </div>
     <div id="results">
         <!-- Results will be displayed here -->
+    </div>
+
+    <div class="favorites-container">
+        <h2>Your Saved Codes</h2>
+        <div id="favorites">
+            <!-- Saved codes will be displayed here -->
+        </div>
     </div>
 </div>
 
 <script>
-    // Database of medical terms and their corresponding codes
-    // You can add as many as you like to study!
-    const medicalCodes = [
-        { term: "appendicitis", code: "K37" },
-        { term: "fracture of ankle", code: "S82.84" },
-        { term: "migraine with aura", code: "G43.109" },
-        { term: "bacterial pneumonia", code: "J15.9" },
-        { term: "type 2 diabetes mellitus", code: "E11.9" },
-        { term: "sore throat", code: "J02.9" },
-        { term: "chest pain", code: "R07.9" },
-        { term: "influenza with pneumonia", code: "J10.0" },
-        { term: "acute sinusitis", code: "J01.90" },
-        { term: "urinary tract infection", code: "N39.0" },
-        { term: "complete blood count", code: "85025" },
-        { term: "x-ray of chest", code: "71045" },
-        { term: "colonoscopy, diagnostic", code: "45378" },
-        { term: "office visit, new patient, low complexity", code: "99202" },
-        { term: "office visit, established patient, moderate complexity", code: "99214" },
-        { term: "hypertension", code: "I10" },
-        { term: "tonsillectomy", code: "42826" },
-        { term: "strep throat", code: "J02.9" },
-        { term: "office visit, established patient, low complexity", code: "99213" },
-        { term: "simple repair of superficial wound", code: "12002" },
-        { term: "colonoscopy with biopsy", code: "45380" },
-        { term: "flu shot", code: "90471" },
-        { term: "mammography, screening", code: "77067" },
-        { term: "influenza", code: "J11.1" },
-        { term: "general adult medical examination", code: "Z00.00" },
-        { term: "encounter for pre-employment examination", code: "Z02.1" },
-        { term: "anemia, iron deficiency", code: "D50.9" },
-        { term: "chronic kidney disease, stage 3", code: "N18.3" },
-        { term: "epilepsy", code: "G40.909" },
-        { term: "bipolar disorder", code: "F31.9" },
-        { term: "melanoma of skin", code: "C43.9" },
-        { term: "chronic obstructive pulmonary disease (COPD)", code: "J44.9" },
-        { term: "hypothyroidism", code: "E03.9" },
-        { term: "schizophrenia", code: "F20.9" },
-        { term: "fracture of humerus", code: "S42.301A" },
-        { term: "dental caries", code: "K02.9" },
-        { term: "gastritis, unspecified", code: "K29.70" },
-        { term: "essential hypertension", code: "I10" },
-        { term: "congestive heart failure", code: "I50.9" },
-        { term: "diabetes mellitus with hyperglycemia", code: "E11.65" },
-        { term: "abdominal pain", code: "R10.9" },
-        { term: "dizziness and giddiness", code: "R42" },
-        { term: "asthma", code: "J45.909" },
-        { term: "sinusitis", code: "J32.9" }
-    ];
+    // This function simulates an API call to a massive database of medical codes.
+    async function fetchMedicalCodes(query) {
+        // A much larger, more diverse mock database.
+        const mockDatabase = [
+            { term: "appendicitis", code: "K37" },
+            { term: "fracture of ankle", code: "S82.84" },
+            { term: "migraine with aura", code: "G43.109" },
+            { term: "bacterial pneumonia", code: "J15.9" },
+            { term: "type 2 diabetes mellitus", code: "E11.9" },
+            { term: "sore throat", code: "J02.9" },
+            { term: "chest pain", code: "R07.9" },
+            { term: "influenza with pneumonia", code: "J10.0" },
+            { term: "acute sinusitis", code: "J01.90" },
+            { term: "urinary tract infection", code: "N39.0" },
+            { term: "complete blood count", code: "85025" },
+            { term: "x-ray of chest", code: "71045" },
+            { term: "colonoscopy, diagnostic", code: "45378" },
+            { term: "office visit, new patient, low complexity", code: "99202" },
+            { term: "office visit, established patient, moderate complexity", code: "99214" },
+            { term: "hypertension", code: "I10" },
+            { term: "tonsillectomy", code: "42826" },
+            { term: "strep throat", code: "J02.0" },
+            { term: "office visit, established patient, low complexity", code: "99213" },
+            { term: "simple repair of superficial wound", code: "12002" },
+            { term: "colonoscopy with biopsy", code: "45380" },
+            { term: "flu shot", code: "90471" },
+            { term: "mammography, screening", code: "77067" },
+            { term: "influenza", code: "J11.1" },
+            { term: "general adult medical examination", code: "Z00.00" },
+            { term: "encounter for pre-employment examination", code: "Z02.1" },
+            { term: "anemia, iron deficiency", code: "D50.9" },
+            { term: "chronic kidney disease, stage 3", code: "N18.3" },
+            { term: "epilepsy", code: "G40.909" },
+            { term: "bipolar disorder", code: "F31.9" },
+            { term: "melanoma of skin", code: "C43.9" },
+            { term: "chronic obstructive pulmonary disease (COPD)", code: "J44.9" },
+            { term: "hypothyroidism", code: "E03.9" },
+            { term: "schizophrenia", code: "F20.9" },
+            { term: "fracture of humerus", code: "S42.301A" },
+            { term: "dental caries", code: "K02.9" },
+            { term: "gastritis, unspecified", code: "K29.70" },
+            { term: "essential hypertension", code: "I10" },
+            { term: "congestive heart failure", code: "I50.9" },
+            { term: "diabetes mellitus with hyperglycemia", code: "E11.65" },
+            { term: "abdominal pain", code: "R10.9" },
+            { term: "dizziness and giddiness", code: "R42" },
+            { term: "asthma", code: "J45.909" },
+            { term: "sinusitis", code: "J32.9" },
+            { term: "other specified complications of internal orthopedic prosthetic devices, implants and grafts, initial encounter", code: "T84.89XA" },
+            { term: "laceration with foreign body of unspecified part of shoulder, initial encounter", code: "S41.02A" },
+            { term: "concussion, initial encounter", code: "S06.0X0A" },
+            { term: "abrasion of right ankle, initial encounter", code: "S90.511A" },
+            { term: "burn of third degree of head, face, and neck, initial encounter", code: "T20.21XA" },
+            { term: "burn of first degree of trunk, initial encounter", code: "T21.11XA" },
+            { term: "other specified complication of procedure, initial encounter", code: "T81.89XA" },
+            { term: "pneumonia due to bacteria", code: "J15.9" },
+            { term: "other postoperative complication", code: "T81.9XXA" },
+            { term: "fracture of tibia", code: "S82.201A" },
+            { term: "sprain of ankle", code: "S93.40XA" },
+            { term: "chronic low back pain", code: "M54.5" },
+            { term: "acute appendicitis with generalized peritonitis", code: "K35.0" },
+            { term: "otitis media, unspecified", code: "H66.90" },
+            { term: "hypertensive heart disease with heart failure", code: "I11.0" },
+            { term: "streptococcal pharyngitis", code: "J02.0" },
+            { term: "malignant neoplasm of lung", code: "C34.90" },
+            { term: "osteoarthritis of knee", code: "M17.9" },
+            { term: "major depressive disorder", code: "F33.2" },
+            { term: "laceration of tendon, initial encounter", code: "S56.91XA" },
+            { term: "insertion of pacemaker", code: "33208" },
+            { term: "physical therapy, evaluation", code: "97161" },
+            { term: "joint injection", code: "20610" },
+            { term: "laparoscopic cholecystectomy", code: "47562" },
+            { term: "transurethral resection of prostate (TURP)", code: "52601" },
+            { term: "injection, adalimumab", code: "J0135" },
+            { term: "alcohol wipes, box of 200", code: "A4211" },
+            { term: "infusion pump", code: "E0783" },
+            { term: "hospital bed, semi-electric", code: "E0260" },
+            { term: "whirlpool, portable", code: "E0238" },
+            { term: "insulin, Humulin R", code: "J1817" },
+            { term: "urinary catheter kit", code: "A4351" },
+            { term: "cardiac catheterization", code: "93452" },
+            { term: "electrocardiogram (EKG)", code: "93000" },
+            { term: "allergy testing", code: "95004" },
+            { term: "routine venipuncture", code: "36415" },
+            { term: "dermatitis, unspecified", code: "L30.9" },
+            { term: "type 1 diabetes mellitus", code: "E10.9" },
+            { term: "obesity", code: "E66.9" },
+            { term: "schizophrenia", code: "F20.9" },
+            { term: "unstable angina", code: "I20.0" }
+        ];
+
+        // Simulate network delay
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
+        const lowerCaseQuery = query.toLowerCase().trim();
+        return mockDatabase.filter(item => {
+            return item.term.toLowerCase().includes(lowerCaseQuery) || item.code.toLowerCase().includes(lowerCaseQuery);
+        });
+    }
 
     const searchInput = document.getElementById('searchInput');
     const searchButton = document.getElementById('searchButton');
     const resultsContainer = document.getElementById('results');
+    const favoritesContainer = document.getElementById('favorites');
+    const radioButtons = document.getElementsByName('codeType');
+
+    // Function to check if a code is ICD-10, CPT, or HCPCS Level II
+    function getCodeType(code) {
+        if (/^\d{5}$/.test(code)) {
+            return 'cpt';
+        }
+        if (/^[A-Z]\d{4}$/i.test(code)) {
+            return 'hcpcs2';
+        }
+        if (/^[A-Z]\d.*$/i.test(code)) {
+            return 'icd10';
+        }
+        return 'unknown';
+    }
+
+    // --- Favorites Logic ---
+    function loadFavorites() {
+        try {
+            const favorites = JSON.parse(localStorage.getItem('medical-codes-favorites') || '[]');
+            displayFavorites(favorites);
+        } catch (e) {
+            console.error('Failed to load favorites from localStorage:', e);
+            displayFavorites([]);
+        }
+    }
+
+    function displayFavorites(favorites) {
+        favoritesContainer.innerHTML = '';
+        if (favorites.length === 0) {
+            favoritesContainer.innerHTML = '<p class="no-favorites">No saved codes yet. Search for a code and click the save button to add it.</p>';
+            return;
+        }
+        favorites.forEach(item => {
+            const favoriteItem = document.createElement('div');
+            favoriteItem.classList.add('favorite-item');
+            favoriteItem.innerHTML = `
+                <span class="favorite-term">${item.term}</span>
+                <span class="favorite-code">${item.code}</span>
+                <button class="delete-button" data-code="${item.code}">✖</button>
+            `;
+            favoritesContainer.appendChild(favoriteItem);
+        });
+
+        // Add event listeners for the delete buttons
+        document.querySelectorAll('.delete-button').forEach(button => {
+            button.addEventListener('click', (e) => {
+                const codeToDelete = e.target.dataset.code;
+                deleteFavorite(codeToDelete);
+            });
+        });
+    }
+
+    function saveFavorite(item) {
+        let favorites = JSON.parse(localStorage.getItem('medical-codes-favorites') || '[]');
+        if (!favorites.some(fav => fav.code === item.code)) {
+            favorites.push(item);
+            localStorage.setItem('medical-codes-favorites', JSON.stringify(favorites));
+            displayFavorites(favorites);
+        }
+    }
+
+    function deleteFavorite(code) {
+        let favorites = JSON.parse(localStorage.getItem('medical-codes-favorites') || '[]');
+        const updatedFavorites = favorites.filter(fav => fav.code !== code);
+        localStorage.setItem('medical-codes-favorites', JSON.stringify(updatedFavorites));
+        displayFavorites(updatedFavorites);
+    }
+    // --- End Favorites Logic ---
 
     // Function to perform the search
-    function performSearch() {
-        const query = searchInput.value.toLowerCase().trim();
+    async function performSearch() {
+        const query = searchInput.value;
+        const selectedFilter = [...radioButtons].find(rb => rb.checked).value;
         resultsContainer.innerHTML = ''; // Clear previous results
 
         if (query === "") {
             return;
         }
 
-        const filteredCodes = medicalCodes.filter(item => {
-            // Check if the query is in the term OR the code field
-            return item.term.toLowerCase().includes(query) || item.code.toLowerCase().includes(query);
-        });
+        // Show a loading indicator
+        resultsContainer.innerHTML = '<p class="loading">Searching database...</p>';
 
-        if (filteredCodes.length > 0) {
-            filteredCodes.forEach(item => {
-                const resultItem = document.createElement('div');
-                resultItem.classList.add('result-item');
-                resultItem.innerHTML = `
-                    <span class="result-term">${item.term}</span>
-                    <span class="result-code">${item.code}</span>
-                `;
-                resultsContainer.appendChild(resultItem);
+        try {
+            const allCodes = await fetchMedicalCodes(query);
+
+            const filteredCodes = allCodes.filter(item => {
+                if (selectedFilter === 'all') {
+                    return true;
+                } else {
+                    return getCodeType(item.code) === selectedFilter;
+                }
             });
-        } else {
-            resultsContainer.innerHTML = `<p class="no-results">No codes found for "${query}". Try a different term.</p>`;
+
+            resultsContainer.innerHTML = ''; // Clear loading indicator
+
+            if (filteredCodes.length > 0) {
+                filteredCodes.forEach(item => {
+                    const resultItem = document.createElement('div');
+                    resultItem.classList.add('result-item');
+                    resultItem.innerHTML = `
+                        <span class="result-term">${item.term}</span>
+                        <span class="result-code">${item.code}</span>
+                        <button class="save-button" data-term="${item.term}" data-code="${item.code}">★</button>
+                    `;
+                    resultsContainer.appendChild(resultItem);
+                });
+
+                // Add event listeners for the new save buttons
+                document.querySelectorAll('.save-button').forEach(button => {
+                    button.addEventListener('click', (e) => {
+                        const item = {
+                            term: e.target.dataset.term,
+                            code: e.target.dataset.code
+                        };
+                        saveFavorite(item);
+                    });
+                });
+            } else {
+                resultsContainer.innerHTML = `<p class="no-results">No codes found for "${query}" with the current filter. Try a different term or filter option.</p>`;
+            }
+        } catch (error) {
+            resultsContainer.innerHTML = `<p class="no-results">An error occurred. Please try again.</p>`;
+            console.error('Search failed:', error);
         }
     }
 
@@ -206,6 +435,17 @@
             performSearch();
         }
     });
+
+    radioButtons.forEach(radio => {
+        radio.addEventListener('change', () => {
+            if (searchInput.value.trim() !== "") {
+                performSearch();
+            }
+        });
+    });
+
+    // Load favorites when the page loads
+    window.onload = loadFavorites;
 </script>
 
 </body>
