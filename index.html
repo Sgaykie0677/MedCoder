@@ -134,7 +134,8 @@
         { term: "x-ray of chest", code: "71045" },
         { term: "colonoscopy, diagnostic", code: "45378" },
         { term: "office visit, new patient, low complexity", code: "99202" },
-        { term: "office visit, established patient, moderate complexity", code: "99214" }
+        { term: "office visit, established patient, moderate complexity", code: "99214" },
+        { term: "hypertension", code: "I10" } // Added hypertension
     ];
 
     const searchInput = document.getElementById('searchInput');
@@ -151,7 +152,8 @@
         }
 
         const filteredCodes = medicalCodes.filter(item => {
-            return item.term.toLowerCase().includes(query);
+            // Check if the query is in the term OR the code field
+            return item.term.toLowerCase().includes(query) || item.code.toLowerCase().includes(query);
         });
 
         if (filteredCodes.length > 0) {
